@@ -5,19 +5,109 @@ import pandas as pd
 
 #get the url for each page and return the beautiful soup object
 def get_url (page):
-    page = (page - 1) * 30
-    url = "https://www.tripadvisor.com/Search?geo=191&redirect&q=national+park&uiOrigin=MASTHEAD&ssrc=A&typeaheadRedirect=true&returnTo=__2F__Travel__2D__g191__2D__c3259__2F__United__2D__States%%3ANational__2E__Parks__2E__Monuments__2E__Etc__2E__html__2F__&pid=3825&startTime=undefined&searchSessionId=52A513F08A52B338445106C616C0147C1480475706599ssid?&o=%s" %(page)
-    r = requests.get(url)
-    soup = BeautifulSoup(r.content,"html.parser")
-    return soup
+    if page >13:
+        exit
+    else:
+        page = (page - 1) * 30
+        url = 'https://www.tripadvisor.com/Search?geo=191&redirect&q=national+park&uiOrigin&ssrc=g&returnTo=__2F__&pid=3826&startTime&searchSessionId=42709F017B9DACC99BEE6E3996EF059B1494301728016ssid&sid=42709F017B9DACC99BEE6E3996EF059B1494375065646&rf=0&sessionId=42709F017B9DACC99BEE6E3996EF059B&actionType=updatePage&dist=undefined&o=%s&ajax=search' % (
+        page)
+        r = requests.get(url)
+        soup = BeautifulSoup(r.content, "html.parser")
+        return soup
+
 
 #get_name of park
 def get_name (soup):
-    name = []
-    for item in soup.find_all("div", {"class": "result ATTRACTIONS"}):
-          park_name = str(item.find_all("div", {"class": "title"})[0].text)
-          name.append(park_name)
-    return name
+
+    name = [] 
+    state = []
+    things_to_do =[]
+
+    for item in soup.find_all("div", {"class": "info geo-info"}):  
+        park_name = str(item.find("div", {"class": "title"}).text)
+        # to_do_link = 'https://www.tripadvisor.com'+ str(item.find_all("a")[1]["href"])
+        if len(park_name.split(',')) == 3:
+            if 'National' in park_name.split(',')[0]:
+                name.append(park_name.split(',')[0])
+            else:
+                name.append(park_name.split(',')[1])
+        else:
+            name.append(park_name.split(',')[0])
+        state.append(park_name.rsplit(',',1)[1])
+        things_to_do.append('https://www.tripadvisor.com'+ str(item.find_all("a")[1]["href"]))
+
+    park_info = pd.DataFrame([name, state, things_to_do]).transpose()
+    park_info.columns = ['Name', 'State', 'Link']
+     return park_info
+
+
+#get top things to do for each park
+link = 'https://www.tripadvisor.com/Attractions-g60999-Activities-Yellowstone_National_Park_Wyoming.html'
+def get_top (link):
+    r = requests.get(link)
+    soup = BeautifulSoup(r.content, "html.parser")
+
+    title = []
+    rating = []
+    review_link = []
+
+    for item in soup.find_all("div",{"class": "listing_info"}):
+        title.append(item.find("a").text)
+        rating.append(item.find("div",{"class":"rs rating"}).find("span")["alt"].split(' ')[0])
+        review_link.append('https://www.tripadvisor.com' + str(item.find("div",{"class":"rs rating"}).find("a")["href"]))
+
+    top_things = pd.DataFrame([title, rating, review_link]).transpose()
+    top_things.columns = ['Title', 'Rating', 'Review Link']
+
+    return top_things
+
+review_link = 'https://www.tripadvisor.com/Attraction_Review-g60999-d532063-Reviews-Lower_Geyser_Basin-Yellowstone_National_Park_Wyoming.html'
+# review_link = 'https://www.tripadvisor.com/Attraction_Review-g60999-d2236532-Reviews-or10-Lamar_Valley-Yellowstone_National_Park_Wyoming.html#REVIEWS'
+def get_reviews (review_link):
+    # page = 0
+    # review_link.rsplit('-',2)[0] + 'or%s-'%(page) + review_link.rsplit('-',2)[1] + '-' + review_link.rsplit('-',2)[2]
+    r = requests.get(review_link)
+    base_soup = BeautifulSoup(r.content, "html.parser")
+
+    title = []
+    rating = []
+    review = []
+
+    # first page
+    for item in base_soup.find_all("div",{"class": "review"})[1:]:
+        title.append(str(item.find("span", {"class":"noQuotes"}).text))
+        rating.append(str(item.find("span", {"class": "ui_bubble_rating"})["class"][1].split('_')[1]))
+        review.append(str(item.find("p", {"class":"partial_entry"}).text.encode("utf-8")))
+
+    title = []
+    rating = []
+    review = []
+    #following pages
+    for item in base_soup.find_all("div", {"class": "pageNumbers"}):
+        # url = 'https://www.tripadvisor.com' + str(item.find("a")["href"])
+        url = 'https://www.tripadvisor.com/Attraction_Review-g60999-d532063-Reviews-or80-Lower_Geyser_Basin-Yellowstone_National_Park_Wyoming.html#REVIEWS'
+        r = requests.get(url)
+        soup = BeautifulSoup(r.content, "html.parser")
+        print url
+
+        for item in soup.find_all("div",{"class": "review"})[1:]:
+            if len(item.find("span", {"class":"noQuotes"})) == 0:
+                title.append('')
+            else:
+                title.append(str(item.find("span", {"class":"noQuotes"}).text))
+            rating.append(str(item.find("span", {"class": "ui_bubble_rating"})["class"][1].split('_')[1]))
+            review.append(str(item.find("p", {"class":"partial_entry"}).text.encode("utf-8")))
+
+    reviews = pd.DataFrame([title, rating, review]).transpose()
+    reviews.columns = ['Review Title', 'Review Rating', 'Review']
+
+    print reviews
+
+    return reviews
+
+print get_reviews (review_link)
+
+
 
 #get info from wikipedia
 def wiki_national_park (wiki_url):
@@ -45,10 +135,10 @@ def wiki_national_park (wiki_url):
 
 
 def main():
-    park_list = []
-    for i in range(1, 3):
+    park_list = pd.DataFrame()
+    for i in range(1, 5):
         soup = get_url(i)
-        park_list.extend(get_name(soup))
+        park_list = pd.concat([park_list,get_name(soup)], ignore_index= True)
     print park_list
 
     wiki_url = 'https://en.wikipedia.org/wiki/List_of_national_parks_of_the_United_States'
