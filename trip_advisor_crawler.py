@@ -61,37 +61,48 @@ def get_top (link):
 
     return top_things
 
-review_link = 'https://www.tripadvisor.com/Attraction_Review-g60999-d532063-Reviews-Lower_Geyser_Basin-Yellowstone_National_Park_Wyoming.html'
+review_link = 'https://www.tripadvisor.com/Attraction_Review-g60999-d532063-Reviews-Lower_Geyser_Basin-Yellowstone_National_Park_Wyoming.html#REVIEWS'
 # review_link = 'https://www.tripadvisor.com/Attraction_Review-g60999-d2236532-Reviews-or10-Lamar_Valley-Yellowstone_National_Park_Wyoming.html#REVIEWS'
 def get_reviews (review_link):
     # page = 0
     # review_link.rsplit('-',2)[0] + 'or%s-'%(page) + review_link.rsplit('-',2)[1] + '-' + review_link.rsplit('-',2)[2]
     r = requests.get(review_link)
     base_soup = BeautifulSoup(r.content, "html.parser")
-
+    # print base_soup.find("div", {"class": "pageNumbers"}).find_all("a")
+    print base_soup.find("div", {"id": "REVIEWS"})
+    #
+    # title = []
+    # rating = []
+    # review = []
+    #
+    # # first page
+    # for item in base_soup.find_all("div",{"class": "review"})[1:]:
+    #     title.append(str(item.find("span", {"class":"noQuotes"}).text))
+    #     rating.append(str(item.find("span", {"class": "ui_bubble_rating"})["class"][1].split('_')[1]))
+    #     review.append(str(item.find("p", {"class":"partial_entry"}).text.encode("utf-8")))
+    #
     title = []
     rating = []
     review = []
 
-    # first page
-    for item in base_soup.find_all("div",{"class": "review"})[1:]:
-        title.append(str(item.find("span", {"class":"noQuotes"}).text))
-        rating.append(str(item.find("span", {"class": "ui_bubble_rating"})["class"][1].split('_')[1]))
-        review.append(str(item.find("p", {"class":"partial_entry"}).text.encode("utf-8")))
-
-    title = []
-    rating = []
-    review = []
     #following pages
-    for item in base_soup.find_all("div", {"class": "pageNumbers"}):
-        # url = 'https://www.tripadvisor.com' + str(item.find("a")["href"])
-        url = 'https://www.tripadvisor.com/Attraction_Review-g60999-d532063-Reviews-or80-Lower_Geyser_Basin-Yellowstone_National_Park_Wyoming.html#REVIEWS'
-        r = requests.get(url)
-        soup = BeautifulSoup(r.content, "html.parser")
-        print url
+    for item in base_soup.find("div", {"class": "pageNumbers"}).find_all("a"):
+        url = 'https://www.tripadvisor.com' + item["href"]
+        # url = 'https://www.tripadvisor.com/Attraction_Review-g60999-d532063-Reviews-or80-Lower_Geyser_Basin-Yellowstone_National_Park_Wyoming.html#REVIEWS'
+        # r = requests.get(url)
+        # soup = BeautifulSoup(r.content, "html.parser")
+        print item.text
+
+        # for item in soup.find_all("div", {"class":"quote"}):
+        #     print item
+        # for item in soup.find_all("span", {"class":"noQuotes"}):
+        #     print item
+        # print soup.find_all("div", {"class":"quote"})
+        # print soup.find_all("span", {"class":"noQuotes"})
+
 
         for item in soup.find_all("div",{"class": "review"})[1:]:
-            if len(item.find("span", {"class":"noQuotes"})) == 0:
+            if item.find("span", {"class":"noQuotes"}) is None:
                 title.append('')
             else:
                 title.append(str(item.find("span", {"class":"noQuotes"}).text))
@@ -104,6 +115,8 @@ def get_reviews (review_link):
     print reviews
 
     return reviews
+
+get_reviews(review_link)
 
 print get_reviews (review_link)
 
