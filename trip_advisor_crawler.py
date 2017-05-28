@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 import requests
 from bs4 import BeautifulSoup
@@ -5,9 +6,10 @@ import pandas as pd
 import re
 
 # get_name of park and the link to things to do
+
 def get_name (pages):
 
-    name = [] 
+    name = []
     state = []
     things_to_do =[]
 
@@ -40,13 +42,10 @@ def get_name (pages):
             park_info = pd.DataFrame([name, state, things_to_do]).transpose()
             park_info.columns = ['Name', 'State', 'Link']
 
-     return park_info
-
-# park_info = get_name(3)
-# park_info.to_csv('/Users/mliu/National_Parks/output.csv')
+    return park_info
 
 
-#get top things to do for each park
+# get top things to do for each park
 # link = 'https://www.tripadvisor.com/Attractions-g60999-Activities-Yellowstone_National_Park_Wyoming.html'
 def get_top (park_info, top_num):
     link = park_info["Link"]
@@ -70,7 +69,6 @@ def get_top (park_info, top_num):
 
     return top_things
 
-# get_top(park_info,3)
 
 # base_review_link = 'https://www.tripadvisor.com/Attraction_Review-g60999-d126748-Reviews-Upper_Geyser_Basin-Yellowstone_National_Park_Wyoming.html'
 # review_link = 'https://www.tripadvisor.com/Attraction_Review-g60999-d2236532-Reviews-or10-Lamar_Valley-Yellowstone_National_Park_Wyoming.html#REVIEWS'
@@ -109,10 +107,8 @@ def get_reviews (things_todo):
 
     return reviews
 
-# get_reviews(base_review_link)
 
-
-#get info from wikipedia
+# get info from wikipedia
 def wiki_national_park (wiki_url):
     wiki_url = wiki_url
     r = requests.get(wiki_url)
@@ -138,36 +134,34 @@ def wiki_national_park (wiki_url):
 
 
 def main():
-    # park_list = pd.DataFrame()
-    # for i in range(1, 5):
-    #     soup = get_url(i)
-    #     park_list = pd.concat([park_list,get_name(soup)], ignore_index= True)
-    # print park_list
 
     park_list = get_name(3)
 
     top_things_todo = pd.DataFrame(columns= ["Name","State",'Title', 'Rating', 'Review Link'])
 
-    num_of_park = 1
+    park_start = 10
+    park_end = 50
     num_of_things_todo = 3
 
-    for i in range(num_of_park):
+    for i in range(park_start, park_end):
         top_things_todo = top_things_todo.append(get_top(park_list.ix[i], num_of_things_todo), ignore_index= True)
 
     # print top_things_todo
 
     park_reviews = pd.DataFrame(columns=['Park Name','Things To Do', 'Review Title', 'Review Rating', 'Review'])
     for i in range(len(top_things_todo)):
-        things_todo = top_things_todo.ix[0]
-        park_reviews.append(get_reviews(things_todo), ignore_index = True)
+        things_todo = top_things_todo.ix[i]
+        park_reviews = park_reviews.append(get_reviews(things_todo), ignore_index = True)
+        print i
 
     # print park_reviews
 
-    park_reviews.to_csv('/Users/mliu/National_Parks/output.csv')
+    park_reviews.to_csv('/Users/mliu/National_Parks/review_output1-10.csv')
 
     wiki_url = 'https://en.wikipedia.org/wiki/List_of_national_parks_of_the_United_States'
-    print wiki_national_park(wiki_url)
+    # print wiki_national_park(wiki_url)
 
+    wiki_national_park(wiki_url).to_csv('/Users/mliu/National_Parks/wiki_output.csv')
 
 if __name__ == "__main__":
     main()
