@@ -60,9 +60,14 @@ def get_top (park_info, top_num):
     review_link = []
 
     for item in soup.find_all("div",{"class": "listing_info"})[:top_num]:
-        title.append(item.find("a").text)
-        rating.append(item.find("div",{"class":"rs rating"}).find("span")["alt"].split(' ')[0])
-        review_link.append('https://www.tripadvisor.com' + str(item.find("div",{"class":"rs rating"}).find("a")["href"]))
+
+        if item.find("div",{"class":"rs rating"}) is not None:
+            title.append(item.find("a").text)
+            rating.append(item.find("div",{"class":"rs rating"}).find("span")["alt"].split(' ')[0])
+            review_link.append('https://www.tripadvisor.com' + str(item.find("div",{"class":"rs rating"}).find("a")["href"]))
+        else:
+            break
+
 
     top_things = pd.DataFrame([name, state, title, rating, review_link]).transpose()
     top_things.columns = ["Name","State",'Title', 'Rating', 'Review Link']
@@ -79,8 +84,11 @@ def get_reviews (things_todo):
     r = requests.get(base_review_link)
     soup = BeautifulSoup(r.content, "html.parser")
 
+    if soup.find("div", {"class": "pageNumbers"}) is not None:
+        last_page_num = int(soup.find("div", {"class": "pageNumbers"}).find_all("a")[-1].text)
+    else:
+        last_page_num = 1
 
-    last_page_num = int(soup.find("div", {"class": "pageNumbers"}).find_all("a")[-1].text)
 
     for page in range(int(last_page_num)):
 
@@ -139,12 +147,13 @@ def main():
 
     top_things_todo = pd.DataFrame(columns= ["Name","State",'Title', 'Rating', 'Review Link'])
 
-    park_start = 10
-    park_end = 50
+    park_start = 50
+    park_end = 60
     num_of_things_todo = 3
 
     for i in range(park_start, park_end):
         top_things_todo = top_things_todo.append(get_top(park_list.ix[i], num_of_things_todo), ignore_index= True)
+        print park_list.ix[i]["Name"]
 
     # print top_things_todo
 
@@ -152,16 +161,17 @@ def main():
     for i in range(len(top_things_todo)):
         things_todo = top_things_todo.ix[i]
         park_reviews = park_reviews.append(get_reviews(things_todo), ignore_index = True)
-        print i
+        print i, things_todo["Title"]
+        park_reviews.to_csv('/Users/mliu/National_Parks/review_output50-60.csv', mode='a', header=False)
 
     # print park_reviews
 
-    park_reviews.to_csv('/Users/mliu/National_Parks/review_output1-10.csv')
 
-    wiki_url = 'https://en.wikipedia.org/wiki/List_of_national_parks_of_the_United_States'
-    # print wiki_national_park(wiki_url)
 
-    wiki_national_park(wiki_url).to_csv('/Users/mliu/National_Parks/wiki_output.csv')
+    # wiki_url = 'https://en.wikipedia.org/wiki/List_of_national_parks_of_the_United_States'
+    # # print wiki_national_park(wiki_url)
+
+    # wiki_national_park(wiki_url).to_csv('/Users/mliu/National_Parks/wiki_output.csv')
 
 if __name__ == "__main__":
     main()
