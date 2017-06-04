@@ -20,6 +20,7 @@ output4 = pd.read_csv('/Users/mliu/National_Parks/data/review_output30-40.csv', 
 output5 = pd.read_csv('/Users/mliu/National_Parks/data/review_output40-50.csv', encoding='utf-8')
 output6 = pd.read_csv('/Users/mliu/National_Parks/data/review_output50-60.csv', encoding='utf-8')
 wiki_table = pd.read_csv('/Users/mliu/National_Parks/data/wiki_output.csv')
+yellowstone = pd.read_csv('/Users/mliu/National_Parks/data/review_output_yellowstone.csv', encoding='utf-8')
 
 review_table = pd.concat([output1,output2, output3,output4, output5, output6])
 
@@ -79,6 +80,7 @@ def main():
 
     park_name = 'Yellowstone National Park'
     park_data = review_table[review_table["Park Name"] == park_name ][['Review', 'Review Rating']]
+    park_data = yellowstone[['Review', 'Review Rating']]
     preprocess_review_list, all_words = review_tokenizer(park_data)
     classifier_data = classifier_dataprep(preprocess_review_list, all_words)
     train_data, test_data = train_test(classifier_data)
@@ -109,22 +111,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

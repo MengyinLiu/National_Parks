@@ -48,12 +48,20 @@ def get_name (pages):
 # get top things to do for each park
 # link = 'https://www.tripadvisor.com/Attractions-g60999-Activities-Yellowstone_National_Park_Wyoming.html'
 def get_top (park_info, top_num):
+
     link = park_info["Link"]
-    name = [park_info["Name"]]* top_num
-    state = [park_info["State"]] * top_num
-    # link = 'https://www.tripadvisor.com/Attractions-g60999-Activities-Yellowstone_National_Park_Wyoming.html'
+    # link = 'https://www.tripadvisor.com/Attractions-g46657-Activities-National_Park_New_Jersey.html'
     r = requests.get(link)
     soup = BeautifulSoup(r.content, "html.parser")
+
+    # if the park has less top things to do then we requested
+    if len(soup.find_all("div",{"class": "listing_info"})) < top_num:
+        top_num = len(soup.find_all("div", {"class": "listing_info"}))
+    else:
+        top_num = top_num
+
+    name = [park_info["Name"]] * top_num
+    state = [park_info["State"]] * top_num
 
     title = []
     rating = []
@@ -80,38 +88,68 @@ def get_top (park_info, top_num):
 def get_reviews (things_todo):
 
     base_review_link = things_todo["Review Link"]
+    # base_review_link = 'https://www.tripadvisor.com/Attraction_Review-g60999-d532063-Reviews-Lower_Geyser_Basin-Yellowstone_National_Park_Wyoming.html'
 
-    r = requests.get(base_review_link)
+    base_r = requests.get(base_review_link)
+    base_soup = BeautifulSoup(base_r.content, "html.parser")
+
+    review_link = 'https://www.tripadvisor.com' + str(base_soup.find("div", id=re.compile("review_(\\d)+")).find("div", {"class": "quote"}).find("a")["href"])
+    r = requests.get(review_link)
     soup = BeautifulSoup(r.content, "html.parser")
 
+    # find out the last page
     if soup.find("div", {"class": "pageNumbers"}) is not None:
         last_page_num = int(soup.find("div", {"class": "pageNumbers"}).find_all("a")[-1].text)
     else:
         last_page_num = 1
 
-
     for page in range(int(last_page_num)):
-
         if page == 0:
             title = []
             rating = []
             review = []
+            review_date = []
         else:
-            review_link = base_review_link.rsplit('-', 2)[0] + '-or%s-' % (page * 10) + base_review_link.rsplit('-', 2)[1] + '-' + base_review_link.rsplit('-', 2)[2]
+            review_link = 'https://www.tripadvisor.com' + str(soup.find("div", {"class": "unified pagination "}).find_all("a")[1]["href"])
             r = requests.get(review_link)
             soup = BeautifulSoup(r.content, "html.parser")
 
-        for item in soup.find_all("div", id = re.compile("review_(\\d)+")):
+        # if the first post in the page is not english, then get out of the loop
+        if soup.find("div", id=re.compile("review_(\\d)+")).text.encode("utf-8") == '\n':
+            break
 
-            title.append(item.find("div", {"class":"quote"}).find("span", {"class":"noQuotes"}).text.encode("utf-8"))
-            rating.append(str(item.find("span", {"class": "ui_bubble_rating"})["class"][1].split('_')[1]))
-            review.append(str(item.find("p", {"class":"partial_entry"}).text.encode("utf-8")))
+        for item in soup.find_all("div", id=re.compile("review_(\\d)+")):
+            # somehow if the post is not english, it will be empty
+            if item.text.encode("utf-8") != '\n':
+                title.append(item.find("div", {"class": "quote"}).text.encode("utf-8"))
+                rating.append(item.find("span", {"class": "ui_bubble_rating"})["alt"].split(' ')[0].encode("utf-8"))
+                review_date.append(item.find("span", {"class": "ratingDate"}).text.encode("utf-8"))
+                review.append(item.find("div", {"class": "entry"}).text.encode("utf-8"))
+            else:
+                break
+
+    # for page in range(int(last_page_num)):
+    #
+    #     if page == 0:
+    #         title = []
+    #         rating = []
+    #         review = []
+    #     else:
+    #         review_link = base_review_link.rsplit('-', 2)[0] + '-or%s-' % (page * 10) + base_review_link.rsplit('-', 2)[1] + '-' + base_review_link.rsplit('-', 2)[2]
+    #         r = requests.get(review_link)
+    #         soup = BeautifulSoup(r.content, "html.parser")
+    #
+    #     for item in soup.find_all("div", id = re.compile("review_(\\d)+")):
+    #
+    #         title.append(item.find("div", {"class":"quote"}).find("span", {"class":"noQuotes"}).text.encode("utf-8"))
+    #         rating.append(str(item.find("span", {"class": "ui_bubble_rating"})["class"][1].split('_')[1]))
+    #         review.append(str(item.find("p", {"class":"partial_entry"}).text.encode("utf-8")))
 
     num_reviews = len(title)
     park_name = [things_todo["Name"]] * num_reviews
     things = [things_todo["Title"]] * num_reviews
-    reviews = pd.DataFrame([park_name, things, title, rating, review]).transpose()
-    reviews.columns = ['Park Name','Things To Do', 'Review Title', 'Review Rating', 'Review']
+    reviews = pd.DataFrame([park_name, things, title, rating, review_date, review]).transpose()
+    reviews.columns = ['Park Name','Things To Do', 'Review Title', 'Review Rating', 'Review Date', 'Review']
 
     return reviews
 
@@ -147,9 +185,10 @@ def main():
 
     top_things_todo = pd.DataFrame(columns= ["Name","State",'Title', 'Rating', 'Review Link'])
 
-    park_start = 50
-    park_end = 60
-    num_of_things_todo = 3
+    # Yellowstone
+    park_start = 4
+    park_end = 5
+    num_of_things_todo = 30
 
     for i in range(park_start, park_end):
         top_things_todo = top_things_todo.append(get_top(park_list.ix[i], num_of_things_todo), ignore_index= True)
@@ -162,7 +201,7 @@ def main():
         things_todo = top_things_todo.ix[i]
         park_reviews = park_reviews.append(get_reviews(things_todo), ignore_index = True)
         print i, things_todo["Title"]
-        park_reviews.to_csv('/Users/mliu/National_Parks/review_output50-60.csv', mode='a', header=False)
+        park_reviews.to_csv('/Users/mliu/National_Parks/review_output_grandcanyon.csv')
 
     # print park_reviews
 
