@@ -22,8 +22,8 @@ output6 = pd.read_csv('/Users/mliu/National_Parks/data/review_output50-60.csv', 
 
 review_table = pd.concat([output1,output2, output3,output4, output5, output6])
 
-review_array = review_table[review_table["Park Name"] == 'Yosemite National Park']['Review']
-review_array = review_table[review_table["Things To Do"] == 'Bear Lake']['Review']
+# review_array = review_table[review_table["Park Name"] == 'Yosemite National Park']['Review']
+# review_array = review_table[review_table["Things To Do"] == 'Bear Lake']['Review']
 
 
 # get the attribute chunk for each things to do
@@ -100,7 +100,7 @@ def key_word_table (key_word):
         part_of_speech = nltk.pos_tag(all_words_list)
 
         freq_dist = nltk.FreqDist(w for w in part_of_speech)
-        most_common = freq_dist.most_common(30)
+        most_common = freq_dist.most_common(40)
 
         adj_list = []
         adj_count = []
@@ -124,27 +124,31 @@ def key_word_table (key_word):
     things_to_do_list = []
     lift_score_list = []
     all_word_list = []
-    for item in attribute_table2['Things To Do'].drop_duplicates().iteritems():
+    for item in attribute_table['Things To Do'].drop_duplicates().iteritems():
         print item[1]
-        score_list, word_list = lift_score(item[1], key_word, attribute_table2[attribute_table2['Things To Do'] == item[1]]['ADJ'])
-        lift_score_list.append(score_list)
-        all_word_list.append(word_list)
+        score_list, word_list = lift_score(item[1], key_word, attribute_table[attribute_table['Things To Do'] == item[1]]['ADJ'])
+        lift_score_list.extend(score_list)
+        all_word_list.extend(word_list)
 
         num_score = len(score_list)
         things_to_do_list.extend([item[1]] * num_score)
         print num_score
         print lift_score_list
-        print word_list
+        print all_word_list
         print things_to_do_list
 
-    list_table2 = pd.DataFrame([things_to_do_list, all_word_list, lift_score_list]).transpose()
-    list_table2.columns = ["Things To Do", 'ADJ','Lift Score']
+    list_table = pd.DataFrame([things_to_do_list, all_word_list, lift_score_list]).transpose()
+    list_table.columns = ["Things To Do", 'ADJ','Lift Score']
+
+    attribute_table_final = pd.merge(attribute_table, list_table, how='inner', on=['Things To Do','ADJ'] )
+
+    attribute_table_final.to_csv('/Users/mliu/National_Parks/wildlife_table.csv')
 
 
 def main():
 
-    key_word = 'hike'
+    key_word = 'wildlife'
     key_word_table(key_word)
 
 if __name__ == '__main__':
-
+    main()
